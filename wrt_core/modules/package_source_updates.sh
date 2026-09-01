@@ -274,6 +274,20 @@ add_dae() {
 }
 
 
+add_v2ray_geodata() {
+    # sbwml 版本的 v2ray-geodata，生成的包带有 dae-geoip/dae-geosite 别名声明，
+    # luci-app-dae 和 luci-app-mosdns(v5) 都依赖这个别名，kenzok8/small-package 的版本没有。
+    local geodata_dir="$BUILD_DIR/package/v2ray-geodata"
+    local repo_url="https://github.com/sbwml/v2ray-geodata.git"
+    rm -rf "$geodata_dir" 2>/dev/null
+    echo "正在添加 v2ray-geodata (sbwml 版本，含 dae-geoip/dae-geosite 别名)..."
+    if ! git_retry clone --depth 1 "$repo_url" "$geodata_dir"; then
+        echo "错误：从 $repo_url 克隆 v2ray-geodata 仓库失败" >&2
+        exit 1
+    fi
+}
+
+
 update_argon() {
     local repo_url="https://github.com/ZqinKing/luci-theme-argon.git"
     local dst_theme_path="$BUILD_DIR/feeds/luci/themes/luci-theme-argon"
