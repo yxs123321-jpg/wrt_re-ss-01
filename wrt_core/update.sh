@@ -99,6 +99,9 @@ stage_pre_install_source_fixes() {
     update_oaf_deconfig
     add_timecontrol
     add_quickfile
+    add_daede
+    add_minigate
+    add_dae
     update_lucky
     fix_rust_compile_error
     update_smartdns
