@@ -238,6 +238,30 @@ add_quickfile() {
 }
 
 
+add_daede() {
+    local daede_dir="$BUILD_DIR/package/openwrt-daede"
+    local repo_url="https://github.com/kenzok8/openwrt-daede.git"
+    rm -rf "$daede_dir" 2>/dev/null
+    echo "正在添加 openwrt-daede..."
+    if ! git_retry clone --depth 1 "$repo_url" "$daede_dir"; then
+        echo "错误：从 $repo_url 克隆 openwrt-daede 仓库失败" >&2
+        exit 1
+    fi
+}
+
+
+add_minigate() {
+    local minigate_dir="$BUILD_DIR/package/luci-app-minigate"
+    local repo_url="https://github.com/tpxcer/luci-app-minigate.git"
+    rm -rf "$minigate_dir" 2>/dev/null
+    echo "正在添加 luci-app-minigate..."
+    if ! git_retry clone --depth 1 "$repo_url" "$minigate_dir"; then
+        echo "错误：从 $repo_url 克隆 luci-app-minigate 仓库失败" >&2
+        exit 1
+    fi
+}
+
+
 update_argon() {
     local repo_url="https://github.com/ZqinKing/luci-theme-argon.git"
     local dst_theme_path="$BUILD_DIR/feeds/luci/themes/luci-theme-argon"
@@ -353,27 +377,5 @@ update_package() {
         sed -i 's/^PKG_HASH:=.*/PKG_HASH:='$PKG_HASH'/g' "$mk_path"
 
         echo "更新软件包 $1 到 $PKG_VER $PKG_HASH"
-    fi
-}
-add_daede() {
-    local daede_dir="$BUILD_DIR/package/openwrt-daede"
-    local repo_url="https://github.com/kenzok8/openwrt-daede.git"
-    rm -rf "$daede_dir" 2>/dev/null
-    echo "正在添加 openwrt-daede..."
-    if ! git_retry clone --depth 1 "$repo_url" "$daede_dir"; then
-        echo "错误：从 $repo_url 克隆 openwrt-daede 仓库失败" >&2
-        exit 1
-    fi
-}
-
-
-add_minigate() {
-    local minigate_dir="$BUILD_DIR/package/luci-app-minigate"
-    local repo_url="https://github.com/tpxcer/luci-app-minigate.git"
-    rm -rf "$minigate_dir" 2>/dev/null
-    echo "正在添加 luci-app-minigate..."
-    if ! git_retry clone --depth 1 "$repo_url" "$minigate_dir"; then
-        echo "错误：从 $repo_url 克隆 luci-app-minigate 仓库失败" >&2
-        exit 1
     fi
 }
