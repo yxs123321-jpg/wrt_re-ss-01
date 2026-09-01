@@ -223,11 +223,6 @@ install_custom_feed() {
         return 1
     fi
 
-    if ! sync_repo_root_package_to_feed_dir "https://github.com/sbwml/luci-app-dae.git" "main" "$custom_feed_dir" "sbwml/luci-app-dae" "luci-app-dae"; then
-        rm -rf "$custom_feed_dir"
-        return 1
-    fi
-
     if ! fix_emmc_health_luci_js_deps "$custom_feed_dir/luci-app-emmc-health"; then
         rm -rf "$custom_feed_dir"
         return 1
