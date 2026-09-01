@@ -262,6 +262,18 @@ add_minigate() {
 }
 
 
+add_dae() {
+    local dae_dir="$BUILD_DIR/package/luci-app-dae"
+    local repo_url="https://github.com/sbwml/luci-app-dae.git"
+    rm -rf "$dae_dir" 2>/dev/null
+    echo "正在添加 luci-app-dae..."
+    if ! git_retry clone --depth 1 "$repo_url" "$dae_dir"; then
+        echo "错误：从 $repo_url 克隆 luci-app-dae 仓库失败" >&2
+        exit 1
+    fi
+}
+
+
 update_argon() {
     local repo_url="https://github.com/ZqinKing/luci-theme-argon.git"
     local dst_theme_path="$BUILD_DIR/feeds/luci/themes/luci-theme-argon"
