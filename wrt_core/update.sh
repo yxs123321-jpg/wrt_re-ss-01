@@ -102,6 +102,7 @@ stage_pre_install_source_fixes() {
     add_daede
     add_minigate
     add_dae
+    add_v2ray_geodata
     update_lucky
     fix_rust_compile_error
     update_smartdns
