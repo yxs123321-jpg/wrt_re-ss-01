@@ -238,16 +238,6 @@ add_quickfile() {
 }
 
 
-add_daede() {
-    local daede_dir="$BUILD_DIR/package/openwrt-daede"
-    local repo_url="https://github.com/kenzok8/openwrt-daede.git"
-    rm -rf "$daede_dir" 2>/dev/null
-    echo "正在添加 openwrt-daede..."
-    if ! git_retry clone --depth 1 "$repo_url" "$daede_dir"; then
-        echo "错误：从 $repo_url 克隆 openwrt-daede 仓库失败" >&2
-        exit 1
-    fi
-}
 
 
 add_minigate() {
@@ -262,33 +252,8 @@ add_minigate() {
 }
 
 
-add_dae() {
-    local dae_dir="$BUILD_DIR/package/luci-app-dae"
-    local repo_url="https://github.com/sbwml/luci-app-dae.git"
-    rm -rf "$dae_dir" 2>/dev/null
-    echo "正在添加 luci-app-dae..."
-    if ! git_retry clone --depth 1 "$repo_url" "$dae_dir"; then
-        echo "错误：从 $repo_url 克隆 luci-app-dae 仓库失败" >&2
-        exit 1
-    fi
-}
 
 
-add_v2ray_geodata() {
-    # sbwml 版本的 v2ray-geodata，生成的包带有 dae-geoip/dae-geosite 别名声明，
-    # luci-app-dae 和 luci-app-mosdns(v5) 都依赖这个别名。
-    # 官方标准做法是覆盖 feeds/packages/net/v2ray-geodata 这个位置（而不是塞进 package/ 顶层），
-    # 这样能确保它的优先级高于 feeds 里任何旧版本定义，避免被忽略。
-    local geodata_dir="$BUILD_DIR/feeds/packages/net/v2ray-geodata"
-    local repo_url="https://github.com/sbwml/v2ray-geodata.git"
-    rm -rf "$geodata_dir" 2>/dev/null
-    mkdir -p "$(dirname "$geodata_dir")"
-    echo "正在添加 v2ray-geodata (sbwml 版本，含 dae-geoip/dae-geosite 别名)..."
-    if ! git_retry clone --depth 1 "$repo_url" "$geodata_dir"; then
-        echo "错误：从 $repo_url 克隆 v2ray-geodata 仓库失败" >&2
-        exit 1
-    fi
-}
 
 
 update_argon() {
