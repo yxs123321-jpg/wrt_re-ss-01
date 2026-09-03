@@ -35,17 +35,23 @@ source "$SCRIPT_DIR/modules/target_fixes.sh"
 source "$SCRIPT_DIR/modules/luci_fixes.sh"
 source "$SCRIPT_DIR/modules/service_fixes.sh"
 
-# 将 jdcloud_re-ss-01 的内核分区从默认 6144k (6MB) 扩容到 12288k (12MB)，
+# 将指定设备的内核分区从默认 6144k (6MB) 扩容到 12288k (12MB)，
 # 因为开启 DAE 所需的 BTF 内核调试信息会显著增大内核镜像体积，超出 6MB 限制。
-# 仅精确匹配 Device/jdcloud_re-ss-01 这一个设备定义块，不影响其他设备。
-modify_kernel_size_re_ss_01() {
+# 仅精确匹配对应 Device/xxx 设备定义块，不影响其他设备。
+modify_kernel_size_12mb() {
     local ipq60xx_mk_path="$BUILD_DIR/target/linux/qualcommax/image/ipq60xx.mk"
-    if [ -f "$ipq60xx_mk_path" ]; then
-        sed -i '/Device\/jdcloud_re-ss-01/,/endef/{s/KERNEL_SIZE := 6144k/KERNEL_SIZE := 12288k/}' "$ipq60xx_mk_path"
-        echo "已将 jdcloud_re-ss-01 的 KERNEL_SIZE 更新为 12288k (12MB)"
-    else
+    local devices=(jdcloud_re-ss-01 jdcloud_re-cs-02)
+    local dev
+
+    if [ ! -f "$ipq60xx_mk_path" ]; then
         echo "警告：未找到 $ipq60xx_mk_path" >&2
+        return
     fi
+
+    for dev in "${devices[@]}"; do
+        sed -i "/Device\/${dev}/,/endef/{s/KERNEL_SIZE := 6144k/KERNEL_SIZE := 12288k/}" "$ipq60xx_mk_path"
+        echo "已将 ${dev} 的 KERNEL_SIZE 更新为 12288k (12MB)"
+    done
 }
 
 # 阶段顺序不可随意调整：feeds install 前后依赖的目录不同。
@@ -98,8 +104,7 @@ stage_pre_install_source_fixes() {
     add_timecontrol
     add_quickfile
     add_minigate
-    add_v2ray_geodata
-    modify_kernel_size_re_ss_01
+    modify_kernel_size_12mb
     update_lucky
     fix_rust_compile_error
     update_smartdns
