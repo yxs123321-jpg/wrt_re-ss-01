@@ -34,6 +34,20 @@ source "$SCRIPT_DIR/modules/package_source_updates.sh"
 source "$SCRIPT_DIR/modules/target_fixes.sh"
 source "$SCRIPT_DIR/modules/luci_fixes.sh"
 source "$SCRIPT_DIR/modules/service_fixes.sh"
+
+# 将 jdcloud_re-ss-01 的内核分区从默认 6144k (6MB) 扩容到 12288k (12MB)，
+# 因为开启 DAE 所需的 BTF 内核调试信息会显著增大内核镜像体积，超出 6MB 限制。
+# 仅精确匹配 Device/jdcloud_re-ss-01 这一个设备定义块，不影响其他设备。
+modify_kernel_size_re_ss_01() {
+    local ipq60xx_mk_path="$BUILD_DIR/target/linux/qualcommax/image/ipq60xx.mk"
+    if [ -f "$ipq60xx_mk_path" ]; then
+        sed -i '/Device\/jdcloud_re-ss-01/,/endef/{s/KERNEL_SIZE := 6144k/KERNEL_SIZE := 12288k/}' "$ipq60xx_mk_path"
+        echo "已将 jdcloud_re-ss-01 的 KERNEL_SIZE 更新为 12288k (12MB)"
+    else
+        echo "警告：未找到 $ipq60xx_mk_path" >&2
+    fi
+}
+
 # 阶段顺序不可随意调整：feeds install 前后依赖的目录不同。
 stage_repo_checkout() {
     # 从干净的上游源码树开始，保证后续修正基线一致。
@@ -83,7 +97,11 @@ stage_pre_install_source_fixes() {
     update_oaf_deconfig
     add_timecontrol
     add_quickfile
+    add_daede
     add_minigate
+    add_dae
+    add_v2ray_geodata
+    modify_kernel_size_re_ss_01
     update_lucky
     fix_rust_compile_error
     update_smartdns
