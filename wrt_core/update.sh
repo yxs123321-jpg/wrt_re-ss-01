@@ -97,7 +97,9 @@ stage_pre_install_source_fixes() {
     update_oaf_deconfig
     add_timecontrol
     add_quickfile
+    add_daede
     add_minigate
+    add_dae
     add_v2ray_geodata
     modify_kernel_size_re_ss_01
     update_lucky
