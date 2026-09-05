@@ -40,7 +40,7 @@ source "$SCRIPT_DIR/modules/service_fixes.sh"
 # 仅精确匹配对应 Device/xxx 设备定义块，不影响其他设备。
 modify_kernel_size_12mb() {
     local ipq60xx_mk_path="$BUILD_DIR/target/linux/qualcommax/image/ipq60xx.mk"
-    local devices=(jdcloud_re-ss-01 jdcloud_re-cs-02)
+    local devices=(jdcloud_re-ss-01 jdcloud_re-cs-02 link_nn6000-common link_nn6000-v2)
     local dev
 
     if [ ! -f "$ipq60xx_mk_path" ]; then
