@@ -169,7 +169,7 @@ install_custom_feed() {
     local required_feed_dirs=(
         cups tcping luci-lib-taskd luci-app-openclash
         luci-app-quickstart luci-app-store luci-app-homeproxy
-        luci-app-passwall nikki luci-app-nikki mihomo-meta
+        luci-app-daed nikki luci-app-nikki mihomo-meta
         open-app-filter luci-app-oaf lucky luci-app-lucky luci-app-easytier
         luci-app-emmc-health
     )
@@ -192,7 +192,6 @@ install_custom_feed() {
     # 统一从外部仓库同步指定包，避免分散维护 feeds.conf。
     custom_feed_sources=(
         "kenzok8/small-package|https://github.com/kenzok8/small-package.git||${base_custom_feed_packages[*]}"
-        "Openwrt-Passwall/openwrt-passwall|https://github.com/Openwrt-Passwall/openwrt-passwall.git|main|luci-app-passwall"
         "nikkinikki-org/OpenWrt-nikki|https://github.com/nikkinikki-org/OpenWrt-nikki.git|main|nikki luci-app-nikki mihomo-meta"
     )
 
