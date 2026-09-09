@@ -1,0 +1,253 @@
+name: Test WRT
+run-name: Test - ${{ inputs.model }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        required: true
+        description: Device Model
+        type: choice
+        default: jdcloud_ipq60xx_immwrt
+        options:
+          - aliyun_ap8220_immwrt
+          - aliyun_ap8220_libwrt
+          - cmcc_rax3000m_immwrt
+          - gemtek_w1701k_immwrt
+          - jdcloud_ax6000_immwrt
+          - jdcloud_ipq60xx_immwrt
+          - jdcloud_ipq60xx_libwrt
+          - link_nn6000v2_immwrt
+          - linksys_mx4x00_immwrt
+          - n1_immwrt
+          - qihoo_360v6_immwrt
+          - redmi_ax5_immwrt
+          - redmi_ax6_immwrt
+          - redmi_ax6_libwrt
+          - redmi_ax6000_immwrt21
+          - zn_m2_immwrt
+          - zn_m2_libwrt
+          - x64_immwrt
+      add_fragments:
+        required: false
+        description: Add config fragments, comma separated
+        default: ""
+      remove_fragments:
+        required: false
+        description: Remove default config fragments, comma separated
+        default: ""
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  test:
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        os: [ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /usr/local/.ghcup || true
+          sudo rm -rf /usr/share/swift || true
+          sudo rm -rf "${AGENT_TOOLSDIRECTORY:-/opt/hostedtoolcache}" || true
+          docker system prune -af || true
+          sudo -E apt-get autoremove --purge -y || true
+          sudo -E apt-get clean || true
+          df -hT
+
+      - name: Checkout
+        uses: actions/checkout@v7.0.0
+
+      - name: Set Build Date and Timezone
+        env:
+          RAW_ADD_CONFIG_FRAGMENTS: ${{ inputs.add_fragments }}
+          RAW_REMOVE_CONFIG_FRAGMENTS: ${{ inputs.remove_fragments }}
+        run: |
+          sudo -E timedatectl set-timezone "Asia/Shanghai"
+          export BUILD_DATE=$(TZ=UTC-8 date +"%y.%m.%d_%H.%M.%S")
+          echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_ENV
+          sanitize_cache_key_part() { printf '%s' "$1" | tr -c 'A-Za-z0-9_.-' '_'; }
+          echo "ADD_CONFIG_FRAGMENTS_KEY=$(sanitize_cache_key_part "$RAW_ADD_CONFIG_FRAGMENTS")" >> $GITHUB_ENV
+          echo "REMOVE_CONFIG_FRAGMENTS_KEY=$(sanitize_cache_key_part "$RAW_REMOVE_CONFIG_FRAGMENTS")" >> $GITHUB_ENV
+
+          ini="./wrt_core/compilecfg/${{ inputs.model }}.ini"
+          if [ -f "$ini" ]; then
+            export BUILD_SRC=$(awk -F"=" '/REPO_URL/ {print $NF}' "$ini")
+            echo "BUILD_SRC=$BUILD_SRC" >> $GITHUB_ENV
+          else
+            echo "BUILD_SRC=unknown" >> $GITHUB_ENV
+          fi
+
+          echo "Model: ${{ inputs.model }}"
+          echo "BUILD_DATE: $BUILD_DATE"
+
+      - name: Machine Information
+        run: |
+          echo "=============== Test Runner Snapshot ==============="
+          echo "Mode: test (no full compile)"
+          echo "Model: ${{ inputs.model }}"
+          echo "Time: $(date '+%F %T %Z')"
+          echo "Runner: ${RUNNER_NAME} (${RUNNER_OS}/${RUNNER_ARCH})"
+          echo "Kernel: $(uname -r)"
+          echo "Uptime: $(uptime -p)"
+          echo "===================================================="
+          echo "[CPU]"
+          lscpu | grep -E "Model name|Architecture|CPU\\(s\\)|Thread\\(s\\) per core|Core\\(s\\) per socket|CPU max MHz" || true
+          echo "===================================================="
+          echo "[Memory]"
+          free -h
+          echo "===================================================="
+          echo "[Disk]"
+          df -hT
+          echo "----------------------------------------------------"
+          df -hi
+          echo "===================================================="
+          echo "[Workspace]"
+          echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}"
+          du -sh "${GITHUB_WORKSPACE}" 2>/dev/null || true
+          echo "===================================================="
+
+      - name: Validate Project Structure
+        run: |
+          set -e
+          echo "======== [1] 检查仓库基础结构 ========"
+          ls -la
+          echo ""
+          echo "======== [2] 检查关键脚本 ========"
+          for f in ./build.sh ./wrt_core/pre_clone_action.sh; do
+            if [ ! -f "$f" ]; then
+              echo "错误：缺少文件 $f" >&2
+              exit 1
+            fi
+            echo "OK: $f"
+          done
+          echo ""
+          echo "======== [3] 检查机型配置 ini ========"
+          ini="./wrt_core/compilecfg/${{ inputs.model }}.ini"
+          if [ ! -f "$ini" ]; then
+            echo "错误：找不到机型配置 $ini" >&2
+            echo "可用配置列表：" >&2
+            ls -1 ./wrt_core/compilecfg/*.ini 2>/dev/null || true
+            exit 1
+          fi
+          echo "找到配置: $ini"
+          echo "---------- ini 内容（前 120 行）----------"
+          sed -n '1,120p' "$ini"
+          echo "-------------------------------------------"
+
+      - name: Validate Shell Syntax
+        run: |
+          set -e
+          echo "======== bash -n 语法检查 ========"
+          fail=0
+          while IFS= read -r s; do
+            echo "检查: $s"
+            if ! bash -n "$s"; then
+              echo "语法错误: $s" >&2
+              fail=1
+            fi
+          done < <(find ./wrt_core -type f -name '*.sh' 2>/dev/null | sort)
+
+          if [ -f ./build.sh ]; then
+            echo "检查: ./build.sh"
+            bash -n ./build.sh || fail=1
+          fi
+
+          if [ "$fail" -ne 0 ]; then
+            echo "存在 shell 语法错误，测试失败。" >&2
+            exit 1
+          fi
+          echo "全部脚本语法检查通过。"
+
+      - name: Show Fragments And Env
+        env:
+          ADD_CONFIG_FRAGMENTS: ${{ inputs.add_fragments }}
+          REMOVE_CONFIG_FRAGMENTS: ${{ inputs.remove_fragments }}
+        run: |
+          echo "======== 输入参数 ========"
+          echo "model=${{ inputs.model }}"
+          echo "add_fragments=${ADD_CONFIG_FRAGMENTS}"
+          echo "remove_fragments=${REMOVE_CONFIG_FRAGMENTS}"
+          echo "BUILD_SRC=${BUILD_SRC}"
+          echo "BUILD_DATE=${BUILD_DATE}"
+          echo ""
+          echo "======== 相关环境变量 ========"
+          env | grep -E 'FRAGMENT|BUILD_|GITHUB_' | sort || true
+
+      - name: Optional Pre Clone Dry Check
+        run: |
+          set -e
+          echo "======== 预克隆脚本存在性检查 ========"
+          if [ -x ./wrt_core/pre_clone_action.sh ] || [ -f ./wrt_core/pre_clone_action.sh ]; then
+            echo "将执行: ./wrt_core/pre_clone_action.sh ${{ inputs.model }}"
+            echo "（若此步较慢/失败，可在日志中定位 pre_clone 问题）"
+            ./wrt_core/pre_clone_action.sh ${{ inputs.model }}
+            echo "pre_clone 完成。"
+          else
+            echo "未找到可执行的 pre_clone_action.sh，跳过。"
+          fi
+
+      - name: List Feed Fix Modules
+        run: |
+          echo "======== 查找 feed / 修正相关脚本 ========"
+          find . -maxdepth 5 -type f \( \
+            -name 'feed_source_fixes.sh' -o \
+            -name '*prepare*.sh' -o \
+            -name '*feeds*.sh' -o \
+            -name 'custom_feed.sh' \
+          \) 2>/dev/null | sort || true
+          echo ""
+          echo "======== modules 目录（如有）========"
+          ls -la ./wrt_core/modules 2>/dev/null || ls -la ./modules 2>/dev/null || echo "未找到 modules 目录"
+
+      - name: Generate Test Report
+        env:
+          ADD_CONFIG_FRAGMENTS: ${{ inputs.add_fragments }}
+          REMOVE_CONFIG_FRAGMENTS: ${{ inputs.remove_fragments }}
+        run: |
+          mkdir -p ./test-output
+          report="./test-output/test-mode-report.txt"
+          {
+            echo "TEST MODE REPORT"
+            echo "================="
+            echo "status=OK"
+            echo "model=${{ inputs.model }}"
+            echo "build_src=${BUILD_SRC}"
+            echo "date=${BUILD_DATE}"
+            echo "runner=${RUNNER_NAME}"
+            echo "os=${RUNNER_OS}/${RUNNER_ARCH}"
+            echo "add_fragments=${ADD_CONFIG_FRAGMENTS}"
+            echo "remove_fragments=${REMOVE_CONFIG_FRAGMENTS}"
+            echo ""
+            echo "notes:"
+            echo "- 本工作流不执行完整 ./build.sh 编译"
+            echo "- 仅做结构/语法/配置/pre_clone 预检"
+            echo "- 预检通过后再用 Release WRT 正式编译"
+          } > "$report"
+          echo "已生成报告: $report"
+          cat "$report"
+
+      - name: Upload Test Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-mode-report-${{ inputs.model }}-${{ env.BUILD_DATE }}
+          path: ./test-output/
+          if-no-files-found: warn
+
+      - name: Test Summary
+        run: |
+          echo "========================================"
+          echo " TEST 完成：未进行完整固件编译"
+          echo " 机型: ${{ inputs.model }}"
+          echo " 时间: ${BUILD_DATE}"
+          echo " 请到 Artifacts 下载 test-mode-report"
+          echo " 确认无误后，再运行 Release WRT 正式编译"
+          echo "========================================"
